@@ -15,6 +15,9 @@
  */
 package fr.xebia.servlet.filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -42,9 +45,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -442,7 +442,7 @@ public class XForwardedFilter implements Filter {
         protected boolean secure;
         
         protected int serverPort;
-        
+
         @SuppressWarnings("unchecked")
         public XForwardedRequest(HttpServletRequest request) {
             super(request);
@@ -451,14 +451,14 @@ public class XForwardedFilter implements Filter {
             this.scheme = request.getScheme();
             this.secure = request.isSecure();
             this.serverPort = request.getServerPort();
-            
+
             headers = new HashMap<String, List<String>>();
             for (Enumeration<String> headerNames = request.getHeaderNames(); headerNames.hasMoreElements();) {
                 String header = headerNames.nextElement();
                 headers.put(header, Collections.list(request.getHeaders(header)));
             }
         }
-        
+
         @Override
         public long getDateHeader(String name) {
             String value = getHeader(name);
@@ -481,7 +481,7 @@ public class XForwardedFilter implements Filter {
                 return date.getTime();
             }
         }
-        
+
         @Override
         public String getHeader(String name) {
             Map.Entry<String, List<String>> header = getHeaderEntry(name);
@@ -535,6 +535,29 @@ public class XForwardedFilter implements Filter {
         public String getRemoteHost() {
             return this.remoteHost;
         }
+
+        @Override
+        public StringBuffer getRequestURL() {
+            StringBuffer url = new StringBuffer(48);
+            synchronized (url) {
+                String scheme = getScheme();
+                int port = getServerPort();
+
+                url.append(scheme);
+                url.append("://");
+                url.append(getServerName());
+
+                if (port > 0 &&
+                      ((scheme.equalsIgnoreCase("http") && port != 80) ||
+                       (scheme.equalsIgnoreCase("https") && port != 443))) {
+                    url.append(':');
+                    url.append(port);
+                }
+
+                url.append(getRequestURI());
+                return url;
+            }
+        }
         
         public String getScheme() {
             return scheme;
@@ -547,7 +570,7 @@ public class XForwardedFilter implements Filter {
         public boolean isSecure() {
             return secure;
         }
-        
+
         public void removeHeader(String name) {
             Map.Entry<String, List<String>> header = getHeaderEntry(name);
             if (header != null) {
